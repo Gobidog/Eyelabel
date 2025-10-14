@@ -1,0 +1,83 @@
+# QA Intelligence tracking (local only)
+.qa-intelligence/
+
+# Claude configuration (local)
+.claude/
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.Python
+venv/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+
+# Build outputs
+dist/
+build/
+*.egg
+
+# V6.0 Git Worktree directories
+../worktrees/
+.context_bridge.json
+*_STATUS.md
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+mydatabase.db
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Testing
+coverage/
+.nyc_output/
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Misc
+.phoenix-telemetry
+*.bak
+*.tmp
+
+# MCP and AI tools (local only)
+.playwright-mcp/
+memories/
+memory/
+.serena/
+claude_code_mcp_settings.json
+claude_desktop_config.json
+.config/
+.mcp.json

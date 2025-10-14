@@ -1,0 +1,4 @@
+productName,productCode,gs1BarcodeNumber,powerInput,temperatureRating,ipRating,classRating,frequency,cctValue,madeIn
+L-Line 55W EM / TB,185935,9521814000941,55W Emergency LED 220-240Vac,50°C,IP66,Class I,50 Hz,4000K,China
+L-Line 35W Standard,185920,9521814000958,35W LED 220-240Vac,45°C,IP65,Class I,50 Hz,3000K,China
+L-Line 70W High Output,185945,9521814000965,70W LED 220-240Vac,50°C,IP66,Class II,50 Hz,5000K,China

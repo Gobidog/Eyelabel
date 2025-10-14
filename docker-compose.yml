@@ -1,0 +1,120 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: label-postgres
+    environment:
+      POSTGRES_DB: labeldb
+      POSTGRES_USER: labeluser
+      POSTGRES_PASSWORD: labelpass
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U labeluser -d labeldb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - label-network
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: label-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - label-network
+
+  # Backend API (Node.js + Express + TypeORM)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: label-backend
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://labeluser:labelpass@postgres:5432/labeldb
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
+      JWT_EXPIRES_IN: 7d
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dev-encryption-key-change-for-prod-32chars}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3002}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-label-files}
+      AI_SERVICE_URL: http://ai-service:5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - label-network
+    command: npm run dev
+
+  # AI Service (Python FastAPI)
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: label-ai-service
+    ports:
+      - "5000:5000"
+    environment:
+      PYTHONUNBUFFERED: 1
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./ai-service:/app
+    networks:
+      - label-network
+    command: uvicorn main:app --host 0.0.0.0 --port 5000 --reload
+
+  # Frontend (React + Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: label-frontend
+    ports:
+      - "3002:3000"
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://192.168.50.61:4000/api}
+      VITE_AI_SERVICE_URL: ${VITE_AI_SERVICE_URL:-http://192.168.50.61:5000}
+    depends_on:
+      - backend
+      - ai-service
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - label-network
+    command: npm run dev -- --host
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  label-network:
+    driver: bridge
