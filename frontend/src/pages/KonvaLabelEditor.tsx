@@ -308,7 +308,14 @@ export default function KonvaLabelEditor() {
           p: 3,
         }}
       >
-        <Stage width={canvasWidth} height={canvasHeight} ref={stageRef}>
+        <Box
+          sx={{
+            width: canvasWidth,
+            height: canvasHeight,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          }}
+        >
+          <Stage width={canvasWidth} height={canvasHeight} ref={stageRef}>
           <Layer>
             <Rect
               x={0}
@@ -368,6 +375,7 @@ export default function KonvaLabelEditor() {
             })}
           </Layer>
         </Stage>
+        </Box>
       </Box>
     </Box>
   );
