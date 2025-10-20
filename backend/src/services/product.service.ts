@@ -158,23 +158,52 @@ export class ProductService {
   }
 
   /**
-   * Delete product
+   * Delete product with transaction boundary (prevents race conditions)
    */
   async delete(id: string): Promise<void> {
-    const product = await this.getById(id);
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    // Use SERIALIZABLE isolation to prevent race condition where labels
+    // could be created between the check and the delete
+    await queryRunner.startTransaction('SERIALIZABLE');
 
-    // Check if product has labels
-    if (product.labels && product.labels.length > 0) {
-      throw createError('Cannot delete product with existing labels', 400);
+    try {
+      const product = await queryRunner.manager.findOne(Product, {
+        where: { id },
+        relations: ['labels'],
+      });
+
+      if (!product) {
+        throw createError('Product not found', 404);
+      }
+
+      // Check if product has labels
+      if (product.labels && product.labels.length > 0) {
+        throw createError('Cannot delete product with existing labels', 400);
+      }
+
+      await queryRunner.manager.remove(product);
+
+      // Commit transaction
+      await queryRunner.commitTransaction();
+
+      logger.info(`Product deleted: ${product.productName} (${product.productCode})`);
+
+    } catch (error) {
+      // Rollback transaction on any error
+      await queryRunner.rollbackTransaction();
+      logger.error(`Product deletion failed, rolled back: ${error}`);
+      throw error;
+    } finally {
+      // Always release connection
+      await queryRunner.release();
     }
-
-    await this.repository.remove(product);
-
-    logger.info(`Product deleted: ${product.productName} (${product.productCode})`);
   }
 
   /**
-   * Bulk create products
+   * Bulk create products with transaction boundary
+   * Note: This ensures atomicity but still creates products one-by-one.
+   * For performance optimization (batch inserts), see todo #005.
    */
   async bulkCreate(
     products: Array<{
@@ -192,23 +221,62 @@ export class ProductService {
       metadata?: Record<string, any>;
     }>
   ): Promise<{ created: Product[]; errors: Array<{ index: number; error: string }> }> {
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     const created: Product[] = [];
     const errors: Array<{ index: number; error: string }> = [];
 
-    for (let i = 0; i < products.length; i++) {
-      try {
-        const product = await this.create(products[i]);
-        created.push(product);
-      } catch (error) {
-        errors.push({
-          index: i,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+    try {
+      // Check all barcodes for duplicates first
+      const barcodes = products.map(p => p.gs1BarcodeNumber);
+      const existing = await queryRunner.manager.find(Product, {
+        where: barcodes.map(barcode => ({ gs1BarcodeNumber: barcode })),
+      });
+
+      const existingBarcodes = new Set(existing.map(p => p.gs1BarcodeNumber));
+
+      // Process each product
+      for (let i = 0; i < products.length; i++) {
+        try {
+          // Check if barcode already exists
+          if (existingBarcodes.has(products[i].gs1BarcodeNumber)) {
+            errors.push({
+              index: i,
+              error: 'Product with this barcode already exists',
+            });
+            continue;
+          }
+
+          const product = queryRunner.manager.create(Product, products[i]);
+          await queryRunner.manager.save(product);
+          created.push(product);
+          existingBarcodes.add(products[i].gs1BarcodeNumber);
+
+        } catch (error) {
+          errors.push({
+            index: i,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
       }
+
+      // Commit transaction - all products created atomically
+      await queryRunner.commitTransaction();
+
+      logger.info(`Bulk create: ${created.length} products created, ${errors.length} errors`);
+
+      return { created, errors };
+
+    } catch (error) {
+      // Rollback transaction on any error
+      await queryRunner.rollbackTransaction();
+      logger.error(`Bulk create failed, rolled back: ${error}`);
+      throw error;
+    } finally {
+      // Always release connection
+      await queryRunner.release();
     }
-
-    logger.info(`Bulk create: ${created.length} products created, ${errors.length} errors`);
-
-    return { created, errors };
   }
 }

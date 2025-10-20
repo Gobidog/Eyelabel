@@ -65,22 +65,6 @@ export class LabelService {
     return AppDataSource.getRepository(LabelSpecification);
   }
 
-  private get productRepository(): Repository<Product> {
-    if (!AppDataSource.isInitialized) {
-      throw createError('Database connection not initialized', 500);
-    }
-
-    return AppDataSource.getRepository(Product);
-  }
-
-  private get templateRepository(): Repository<LabelTemplate> {
-    if (!AppDataSource.isInitialized) {
-      throw createError('Database connection not initialized', 500);
-    }
-
-    return AppDataSource.getRepository(LabelTemplate);
-  }
-
   /**
    * Get all labels with pagination and filters
    */
@@ -141,58 +125,76 @@ export class LabelService {
   }
 
   /**
-   * Create new label
+   * Create new label with transaction boundary
    */
   async create(data: CreateLabelData, userId: string): Promise<Label> {
-    // Verify product exists
-    const product = await this.productRepository.findOne({
-      where: { id: data.productId },
-    });
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (!product) {
-      throw createError('Product not found', 404);
-    }
-
-    // Verify template exists
-    const template = await this.templateRepository.findOne({
-      where: { id: data.templateId },
-    });
-
-    if (!template) {
-      throw createError('Template not found', 404);
-    }
-
-    // Create label
-    const label = this.labelRepository.create({
-      productId: data.productId,
-      templateId: data.templateId,
-      labelType: data.labelType,
-      labelData: data.labelData,
-      notes: data.notes,
-      status: LabelStatus.DRAFT,
-      createdById: userId,
-    });
-
-    await this.labelRepository.save(label);
-
-    // Create specifications if provided
-    if (data.specifications) {
-      const specification = this.specificationRepository.create({
-        labelId: label.id,
-        ...data.specifications,
+    try {
+      // Verify product exists
+      const product = await queryRunner.manager.findOne(Product, {
+        where: { id: data.productId },
       });
 
-      await this.specificationRepository.save(specification);
+      if (!product) {
+        throw createError('Product not found', 404);
+      }
+
+      // Verify template exists
+      const template = await queryRunner.manager.findOne(LabelTemplate, {
+        where: { id: data.templateId },
+      });
+
+      if (!template) {
+        throw createError('Template not found', 404);
+      }
+
+      // Create label
+      const label = queryRunner.manager.create(Label, {
+        productId: data.productId,
+        templateId: data.templateId,
+        labelType: data.labelType,
+        labelData: data.labelData,
+        notes: data.notes,
+        status: LabelStatus.DRAFT,
+        createdById: userId,
+      });
+
+      await queryRunner.manager.save(label);
+
+      // Create specifications if provided
+      if (data.specifications) {
+        const specification = queryRunner.manager.create(LabelSpecification, {
+          labelId: label.id,
+          ...data.specifications,
+        });
+
+        await queryRunner.manager.save(specification);
+      }
+
+      // Commit transaction - all operations succeeded
+      await queryRunner.commitTransaction();
+
+      logger.info(`Label created: ${label.id} for product ${product.productName}`);
+
+      // Reload with relations
+      return this.getById(label.id);
+
+    } catch (error) {
+      // Rollback transaction on any error
+      await queryRunner.rollbackTransaction();
+      logger.error(`Label creation failed, rolled back: ${error}`);
+      throw error;
+    } finally {
+      // Always release connection
+      await queryRunner.release();
     }
-
-    logger.info(`Label created: ${label.id} for product ${product.productName}`);
-
-    // Reload with relations
-    return this.getById(label.id);
   }
 
   /**
-   * Update label
+   * Update label with transaction boundary
    */
   async update(
     id: string,
@@ -207,31 +209,56 @@ export class LabelService {
     },
     userId: string
   ): Promise<Label> {
-    const label = await this.getById(id);
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    // Check if label can be edited
-    if ([LabelStatus.APPROVED, LabelStatus.SENT].includes(label.status)) {
-      throw createError('Cannot edit approved or sent labels', 400);
+    try {
+      const label = await queryRunner.manager.findOne(Label, {
+        where: { id },
+        relations: ['product', 'template', 'specification', 'createdBy', 'approvedBy'],
+      });
+
+      if (!label) {
+        throw createError('Label not found', 404);
+      }
+
+      // Check if label can be edited
+      if ([LabelStatus.APPROVED, LabelStatus.SENT].includes(label.status)) {
+        throw createError('Cannot edit approved or sent labels', 400);
+      }
+
+      // Update label fields
+      if (data.labelData) {
+        label.labelData = data.labelData;
+      }
+
+      if (data.notes !== undefined) {
+        label.notes = data.notes;
+      }
+
+      if (data.pdfUrl) {
+        label.pdfUrl = data.pdfUrl;
+      }
+
+      await queryRunner.manager.save(label);
+
+      // Commit transaction
+      await queryRunner.commitTransaction();
+
+      logger.info(`Label updated: ${label.id} by user ${userId}`);
+
+      return this.getById(id);
+
+    } catch (error) {
+      // Rollback transaction on any error
+      await queryRunner.rollbackTransaction();
+      logger.error(`Label update failed, rolled back: ${error}`);
+      throw error;
+    } finally {
+      // Always release connection
+      await queryRunner.release();
     }
-
-    // Update label fields
-    if (data.labelData) {
-      label.labelData = data.labelData;
-    }
-
-    if (data.notes !== undefined) {
-      label.notes = data.notes;
-    }
-
-    if (data.pdfUrl) {
-      label.pdfUrl = data.pdfUrl;
-    }
-
-    await this.labelRepository.save(label);
-
-    logger.info(`Label updated: ${label.id} by user ${userId}`);
-
-    return this.getById(id);
   }
 
   /**
