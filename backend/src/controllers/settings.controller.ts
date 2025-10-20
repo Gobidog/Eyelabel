@@ -1,12 +1,11 @@
 import { Request, Response } from 'express';
 import settingsService from '../services/settings.service';
-import { AuthRequest } from '../middleware/auth.middleware';
 
 export class SettingsController {
   /**
    * Get all settings (admin only, sensitive values masked)
    */
-  async getAllSettings(req: Request, res: Response): Promise<void> {
+  async getAllSettings(_req: Request, res: Response): Promise<void> {
     try {
       const settings = await settingsService.getAllSettings();
 
@@ -28,7 +27,7 @@ export class SettingsController {
   /**
    * Get OpenAI API key status (masked)
    */
-  async getOpenAIKeyStatus(req: Request, res: Response): Promise<void> {
+  async getOpenAIKeyStatus(_req: Request, res: Response): Promise<void> {
     try {
       const maskedKey = await settingsService.getOpenAIKeyMasked();
 
@@ -44,7 +43,7 @@ export class SettingsController {
   /**
    * Update OpenAI API key
    */
-  async updateOpenAIKey(req: AuthRequest, res: Response): Promise<void> {
+  async updateOpenAIKey(req: Request, res: Response): Promise<void> {
     try {
       const { apiKey } = req.body;
 
@@ -92,7 +91,7 @@ export class SettingsController {
   /**
    * Test AI service connection
    */
-  async testAIConnection(req: Request, res: Response): Promise<void> {
+  async testAIConnection(_req: Request, res: Response): Promise<void> {
     try {
       const result = await settingsService.testAIConnection();
 
