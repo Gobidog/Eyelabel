@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, CircularProgress, Box } from '@mui/material';
 import { Provider, useDispatch } from 'react-redux';
+import { SnackbarProvider } from 'notistack';
 import { store, AppDispatch } from './store';
 import { theme } from './theme';
 import { Layout } from './components/Layout';
@@ -171,7 +172,16 @@ const AppShell = () => {
 function App() {
   return (
     <Provider store={store}>
-      <AppShell />
+      <SnackbarProvider
+        maxSnack={3}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        autoHideDuration={3000}
+      >
+        <AppShell />
+      </SnackbarProvider>
     </Provider>
   );
 }
