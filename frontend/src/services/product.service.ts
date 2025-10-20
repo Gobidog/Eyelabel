@@ -28,6 +28,18 @@ export interface BulkCreateProductResult {
   errors: Array<{ index: number; error: string }>;
 }
 
+export interface CSVImportResult {
+  message: string;
+  created: Product[];
+  errors: Array<{ index: number; error: string }>;
+  summary: {
+    total: number;
+    successful: number;
+    failed: number;
+    imagesUploaded: number;
+  };
+}
+
 export const productService = {
   /**
    * Get all products with pagination and filters
@@ -93,5 +105,25 @@ export const productService = {
   ): Promise<BulkCreateProductResult> => {
     const response = await api.post('/products/bulk', { products: data });
     return response.data as BulkCreateProductResult;
+  },
+
+  /**
+   * Import products from CSV file with optional image files
+   */
+  importCSV: async (csvFile: File, imageFiles: File[] = []): Promise<CSVImportResult> => {
+    const formData = new FormData();
+    formData.append('csv', csvFile);
+
+    imageFiles.forEach((file) => {
+      formData.append('images', file);
+    });
+
+    const response = await api.post('/products/import-csv', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data as CSVImportResult;
   },
 };

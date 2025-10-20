@@ -231,52 +231,106 @@ export default function LabelEditorPage() {
     }
   };
 
-  const loadTemplate = () => {
-    if (!fabricCanvasRef.current || !selectedTemplate) return;
-    const template = templates.find((t) => t.id === selectedTemplate);
-    if (!template) return;
+  const loadTemplate = (templateId?: string) => {
+    const templateToLoad = templateId || selectedTemplate;
+    if (!fabricCanvasRef.current || !templateToLoad) return;
+    const template = templates.find((t) => t.id === templateToLoad);
+    if (!template) {
+      console.error('Template not found:', templateToLoad);
+      return;
+    }
 
-    // Clear canvas except grid
-    const objects = fabricCanvasRef.current.getObjects();
-    objects.forEach((obj) => {
-      if (obj.selectable !== false) {
-        fabricCanvasRef.current!.remove(obj);
-      }
-    });
+    console.log('Loading template:', template.name);
+    console.log('Template data:', template.templateData);
+    console.log('Elements count:', template.templateData.elements?.length);
+
+    // Clear canvas completely (including old grid lines)
+    fabricCanvasRef.current.clear();
 
     // Set canvas size from template
-    fabricCanvasRef.current.setWidth(template.templateData.width * 3);
-    fabricCanvasRef.current.setHeight(template.templateData.height * 3);
+    fabricCanvasRef.current.setWidth(template.templateData.width);
+    fabricCanvasRef.current.setHeight(template.templateData.height);
+    fabricCanvasRef.current.backgroundColor = '#ffffff';
 
-    // Load template elements
-    template.templateData.elements?.forEach((element: any) => {
-      let obj: fabric.Object | null = null;
+    // Load template elements by creating fabric objects directly
+    if (template.templateData.elements && template.templateData.elements.length > 0) {
+      console.log('Loading elements:', template.templateData.elements.length);
 
-      if (element.type === 'text') {
-        obj = new fabric.IText(element.properties?.text || 'Text', {
-          left: element.x * 3,
-          top: element.y * 3,
-          fontSize: (element.properties?.fontSize || 14) * 3,
-          fill: element.properties?.fill || '#000000',
-        });
-      } else if (element.type === 'rect') {
-        obj = new fabric.Rect({
-          left: element.x * 3,
-          top: element.y * 3,
-          width: element.width * 3,
-          height: element.height * 3,
-          fill: element.properties?.fill || '#ffffff',
-          stroke: element.properties?.stroke || '#000000',
-          strokeWidth: element.properties?.strokeWidth || 1,
-        });
-      }
+      template.templateData.elements.forEach((el: any) => {
+        try {
+          let obj: any;
 
-      if (obj) {
-        fabricCanvasRef.current!.add(obj);
-      }
-    });
+          if (el.type === 'line') {
+            // Support both formats: x1/y1/x2/y2 (new) and left/top/width/height (old)
+            const coords = el.x1 !== undefined
+              ? [el.x1, el.y1, el.x2, el.y2]
+              : [el.left || 0, el.top || 0, (el.left || 0) + (el.width || 0), (el.top || 0) + (el.height || 0)];
 
-    fabricCanvasRef.current.renderAll();
+            obj = new fabric.Line(coords, {
+              stroke: el.stroke || '#000000',
+              strokeWidth: el.strokeWidth || 1,
+              selectable: el.selectable !== false,
+              evented: el.evented !== false,
+            });
+          } else if (el.type === 'rect') {
+            obj = new fabric.Rect({
+              left: el.left || 0,
+              top: el.top || 0,
+              width: el.width || 0,
+              height: el.height || 0,
+              fill: el.fill || 'transparent',
+              stroke: el.stroke || null,
+              strokeWidth: el.strokeWidth || 0,
+              rx: el.rx || 0,
+              ry: el.ry || 0,
+              selectable: el.selectable !== false,
+              evented: el.evented !== false,
+            });
+          } else if (el.type === 'text' || el.type === 'i-text') {
+            obj = new fabric.IText(el.text || 'Text', {
+              left: el.left || 0,
+              top: el.top || 0,
+              fontSize: el.fontSize || 14,
+              fontFamily: el.fontFamily || 'Arial',
+              fontWeight: el.fontWeight || 'normal',
+              fill: el.fill || '#000000',
+              selectable: el.selectable !== false,
+              evented: el.evented !== false,
+            });
+          } else if (el.type === 'circle') {
+            obj = new fabric.Circle({
+              left: el.left || 0,
+              top: el.top || 0,
+              radius: el.radius || 50,
+              fill: el.fill || 'transparent',
+              stroke: el.stroke || null,
+              strokeWidth: el.strokeWidth || 0,
+              selectable: el.selectable !== false,
+              evented: el.evented !== false,
+            });
+          } else if (el.type === 'polygon') {
+            obj = new fabric.Polygon(el.points || [], {
+              left: el.left || 0,
+              top: el.top || 0,
+              fill: el.fill || 'transparent',
+              stroke: el.stroke || null,
+              strokeWidth: el.strokeWidth || 0,
+              selectable: el.selectable !== false,
+              evented: el.evented !== false,
+            });
+          }
+
+          if (obj) {
+            fabricCanvasRef.current!.add(obj);
+          }
+        } catch (error) {
+          console.error('Error creating object:', el.type, error);
+        }
+      });
+
+      fabricCanvasRef.current.renderAll();
+      console.log('Template loaded:', fabricCanvasRef.current.getObjects().length, 'objects');
+    }
   };
 
   const handleSave = async () => {
@@ -398,7 +452,7 @@ export default function LabelEditorPage() {
 
       if (matchedTemplate) {
         setSelectedTemplate(matchedTemplate.id);
-        setTimeout(loadTemplate, 100);
+        setTimeout(() => loadTemplate(matchedTemplate.id), 100);
         setAiMessage(
           `AI Suggestion: ${response.template_type} template (Confidence: ${Math.round(
             response.confidence * 100
@@ -431,41 +485,38 @@ export default function LabelEditorPage() {
     setAiMessage('Auto-filling template with product data...');
 
     try {
-      // Get all text objects on canvas
+      // Get all objects on canvas
       const objects = fabricCanvasRef.current.getObjects();
 
-      // Auto-fill text fields based on common placeholder patterns
+      // Mapping of placeholders to product data
+      const placeholderMap: Record<string, string> = {
+        '{{productName}}': product.productName,
+        '{{productCode}}': product.productCode,
+        '{{description}}': product.description || '',
+        '{{powerInput}}': product.metadata?.powerInput || '120-240Vac ~ 50/60 Hz',
+        '{{temperatureRating}}': product.metadata?.temperatureRating || 'ta= 50°C A40M OPTIC',
+        '{{ipRating}}': product.metadata?.ipRating || 'IP66',
+        '{{classRating}}': product.metadata?.classRating || 'Class I',
+        '{{lotNumber}}': product.metadata?.lotNumber || '',
+        '{{productImage}}': '[ICON]',
+      };
+
+      // Replace text placeholders
       objects.forEach((obj) => {
         if (obj.type === 'i-text' || obj.type === 'text') {
           const textObj = obj as fabric.IText;
-          const currentText = textObj.text?.toLowerCase() || '';
+          const currentText = textObj.text || '';
 
-          // Replace placeholders with actual product data
-          if (currentText.includes('product') && currentText.includes('name')) {
-            textObj.set({ text: product.productName });
-          } else if (currentText.includes('product') && currentText.includes('code')) {
-            textObj.set({ text: product.productCode });
-          } else if (currentText.includes('description')) {
-            textObj.set({ text: product.description || '' });
-          } else if (currentText.includes('power') && currentText.includes('input')) {
-            textObj.set({ text: product.metadata?.powerInput || '' });
-          } else if (currentText.includes('temperature')) {
-            textObj.set({ text: product.metadata?.temperatureRating || '' });
-          } else if (currentText.includes('ip') && (currentText.includes('rating') || currentText.includes('66'))) {
-            textObj.set({ text: product.metadata?.ipRating || '' });
-          } else if (currentText.includes('class')) {
-            textObj.set({ text: product.metadata?.classRating || '' });
-          } else if (currentText.includes('frequency') || currentText.includes('hz')) {
-            textObj.set({ text: product.metadata?.frequency || '' });
-          } else if (currentText.includes('cct') || currentText.includes('4000k')) {
-            textObj.set({ text: product.metadata?.cctValue || '' });
-          } else if (currentText.includes('made') && currentText.includes('in')) {
-            textObj.set({ text: product.metadata?.madeIn || 'Made in China' });
+          // Check if text contains any placeholder
+          for (const [placeholder, value] of Object.entries(placeholderMap)) {
+            if (currentText.includes(placeholder)) {
+              textObj.set({ text: currentText.replace(placeholder, value) });
+            }
           }
         }
       });
 
-      // Generate and add barcode if product has barcode number
+      // Generate and replace barcode placeholder
       if (product.gs1BarcodeNumber) {
         try {
           const response = await fetch(`${import.meta.env.VITE_API_URL}/barcode/generate`, {
@@ -484,23 +535,39 @@ export default function LabelEditorPage() {
           if (response.ok) {
             const data = await response.json();
 
-            // Find existing barcode placeholder or add new one
-            let barcodeExists = false;
+            // Find barcode placeholder text and replace with image
+            let barcodeTextObj: any = null;
             objects.forEach((obj) => {
-              if (obj.type === 'image' && obj.get('data-barcode')) {
-                barcodeExists = true;
+              if ((obj.type === 'i-text' || obj.type === 'text') &&
+                  (obj as fabric.IText).text?.includes('{{barcode}}')) {
+                barcodeTextObj = obj;
               }
             });
 
-            if (!barcodeExists) {
+            if (barcodeTextObj) {
+              // Remove the placeholder text
+              fabricCanvasRef.current!.remove(barcodeTextObj);
+
+              // Add barcode image centered in the barcode box (168x133 at position 232,180)
               fabric.Image.fromURL(data.dataUrl, (img) => {
+                const barcodeBoxLeft = 232;
+                const barcodeBoxTop = 180;
+                const barcodeBoxWidth = 168;
+                const barcodeBoxHeight = 133;
+
+                // Scale barcode to fit within box (leave some padding)
+                const maxWidth = barcodeBoxWidth - 10;
+                const maxHeight = barcodeBoxHeight - 20;
+                const scaleX = maxWidth / (img.width || 200);
+                const scaleY = maxHeight / (img.height || 100);
+                const scale = Math.min(scaleX, scaleY, 1);
+
                 img.set({
-                  left: 600,
-                  top: 450,
-                  scaleX: 1,
-                  scaleY: 1,
+                  left: barcodeBoxLeft + 5,
+                  top: barcodeBoxTop + 10,
+                  scaleX: scale,
+                  scaleY: scale,
                 });
-                img.set('data-barcode', true);
                 fabricCanvasRef.current!.add(img);
                 fabricCanvasRef.current!.renderAll();
               });
@@ -579,8 +646,11 @@ export default function LabelEditorPage() {
                 value={selectedTemplate}
                 label="Template"
                 onChange={(e) => {
-                  setSelectedTemplate(e.target.value);
-                  setTimeout(loadTemplate, 100);
+                  const templateId = e.target.value;
+                  setSelectedTemplate(templateId);
+                  if (templateId) {
+                    setTimeout(() => loadTemplate(templateId), 100);
+                  }
                 }}
               >
                 <MenuItem value="">Blank Canvas</MenuItem>

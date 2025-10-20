@@ -12,10 +12,11 @@ import { initializeAuth } from './store/authSlice';
 // Lazy load page components for code splitting
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(module => ({ default: module.DashboardPage })));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
+const ProductImportPage = lazy(() => import('./pages/ProductImportPage'));
 const LabelsPage = lazy(() => import('./pages/LabelsPage'));
 const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
-const LabelEditorPage = lazy(() => import('./pages/LabelEditorPage'));
-const BatchLabelGenerationPage = lazy(() => import('./pages/BatchLabelGenerationPage'));
+const TemplateEditorPage = lazy(() => import('./pages/TemplateEditorPage'));
+const LabelEditorPage = lazy(() => import('./pages/KonvaLabelEditor'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 
@@ -69,6 +70,17 @@ const AppShell = () => {
           />
 
           <Route
+            path="/products/import"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <ProductImportPage />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
             path="/labels"
             element={
               <PrivateRoute>
@@ -101,16 +113,7 @@ const AppShell = () => {
             }
           />
 
-          <Route
-            path="/labels/batch"
-            element={
-              <PrivateRoute>
-                <Layout>
-                  <BatchLabelGenerationPage />
-                </Layout>
-              </PrivateRoute>
-            }
-          />
+          <Route path="/labels/batch" element={<Navigate to="/products/import" replace />} />
 
           <Route
             path="/templates"
@@ -118,6 +121,28 @@ const AppShell = () => {
               <PrivateRoute>
                 <Layout>
                   <TemplatesPage />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/templates/create"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <TemplateEditorPage />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/templates/edit/:id"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <TemplateEditorPage />
                 </Layout>
               </PrivateRoute>
             }

@@ -32,7 +32,9 @@ import {
   Refresh as RefreshIcon,
   Upload as UploadIcon,
   Close as CloseIcon,
+  CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { RootState, AppDispatch } from '@/store';
@@ -51,6 +53,7 @@ import { Product } from '@/types';
 
 export default function ProductsPage() {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
   const { products, total, page, limit, isLoading, error } = useSelector(
     (state: RootState) => state.products
   );
@@ -299,10 +302,17 @@ export default function ProductsPage() {
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
             variant="outlined"
+            startIcon={<CloudUploadIcon />}
+            onClick={() => navigate('/products/import')}
+          >
+            Import CSV with Images
+          </Button>
+          <Button
+            variant="outlined"
             startIcon={<UploadIcon />}
             onClick={() => setUploadDialogOpen(true)}
           >
-            Upload CSV
+            Quick Upload
           </Button>
           <Button
             variant="contained"

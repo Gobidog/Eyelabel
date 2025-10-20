@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -26,6 +28,7 @@ import {
   Visibility as ViewIcon,
   ToggleOn as ActiveIcon,
   ToggleOff as InactiveIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
 import { RootState, AppDispatch } from '@/store';
 import {
@@ -53,6 +56,7 @@ const templateTypeColors: Record<TemplateType, 'default' | 'primary' | 'secondar
 
 export default function TemplatesPage() {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
   const { templates, total, page, limit, isLoading } = useSelector(
     (state: RootState) => state.templates
   );
@@ -98,7 +102,13 @@ export default function TemplatesPage() {
         <Typography variant="h4" component="h1">
           Label Templates
         </Typography>
-        {/* Template creation not yet implemented - button removed until feature is ready */}
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => navigate('/templates/create')}
+        >
+          Create Template
+        </Button>
       </Box>
 
       <Card sx={{ mb: 3 }}>

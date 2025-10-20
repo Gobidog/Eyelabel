@@ -128,6 +128,7 @@ const BatchLabelGenerationPage: React.FC = () => {
 
     const fieldNameMap: Record<string, keyof ColumnMapping> = {
       productname: 'productName',
+      description: 'productName', // Also map "description" to productName
       productcode: 'productCode',
       gs1barcodenumber: 'gs1BarcodeNumber',
       powerinput: 'powerInput',
@@ -192,7 +193,6 @@ const BatchLabelGenerationPage: React.FC = () => {
           'productName',
           'productCode',
           'gs1BarcodeNumber',
-          'ipRating',
         ];
         const allRequiredMapped = requiredFields.every((field) => autoMapping[field] !== '');
 
@@ -222,7 +222,6 @@ const BatchLabelGenerationPage: React.FC = () => {
       'productName',
       'productCode',
       'gs1BarcodeNumber',
-      'ipRating',
     ];
     return requiredFields.every((field) => columnMapping[field] !== '');
   };
