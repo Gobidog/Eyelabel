@@ -44,6 +44,10 @@ yarn-error.log*
 *.sqlite3
 mydatabase.db
 
+# Uploaded files
+backend/uploads/
+uploads/
+
 # Docker
 .docker/
 docker-compose.override.yml
