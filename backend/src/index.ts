@@ -13,16 +13,54 @@ const app: Application = express();
 const PORT = process.env.PORT || 4000;
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],  // For Material-UI
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", process.env.AI_SERVICE_URL || 'http://localhost:5000']
+    }
+  },
+  hsts: {
+    maxAge: 31536000,  // 1 year
+    includeSubDomains: true,
+    preload: true
+  },
+  frameguard: {
+    action: 'deny'
+  },
+  noSniff: true,
+  referrerPolicy: {
+    policy: 'strict-origin-when-cross-origin'
+  }
+}));
 
-// CORS configuration - supports comma-separated multiple origins
-const corsOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-  : ['http://localhost:3000'];
+// CORS Configuration - Whitelist specific origins
+const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:5174'
+];
 
 app.use(cors({
-  origin: corsOrigins,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      logger.warn(`Blocked CORS request from unauthorized origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['X-Total-Count'],
+  maxAge: 86400  // Cache preflight for 24 hours
 }));
 
 // Rate limiting
