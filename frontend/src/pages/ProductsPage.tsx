@@ -33,6 +33,7 @@ import {
   Upload as UploadIcon,
   Close as CloseIcon,
   CloudUpload as CloudUploadIcon,
+  Label as LabelIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import Papa from 'papaparse';
@@ -406,6 +407,15 @@ export default function ProductsPage() {
                       {new Date(product.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell align="right">
+                      <Tooltip title="Generate Label">
+                        <IconButton
+                          size="small"
+                          onClick={() => navigate(`/labels/create?productId=${product.id}`)}
+                          color="primary"
+                        >
+                          <LabelIcon />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="Edit">
                         <IconButton
                           size="small"
