@@ -3,6 +3,7 @@ import { ProductController } from '../controllers/product.controller';
 import { authenticate } from '../middleware/auth.middleware';
 import { auditLog } from '../middleware/audit.middleware';
 import { AuditAction } from '../types/enums';
+import { upload } from '../config/multer';
 
 const router = Router();
 const productController = new ProductController();
@@ -50,6 +51,21 @@ router.post(
   '/bulk',
   auditLog('product', AuditAction.CREATE),
   productController.bulkCreate
+);
+
+/**
+ * @route   POST /api/products/import-csv
+ * @desc    Import products from CSV with optional images
+ * @access  Private
+ */
+router.post(
+  '/import-csv',
+  upload.fields([
+    { name: 'csv', maxCount: 1 },
+    { name: 'images', maxCount: 100 }
+  ]),
+  auditLog('product', AuditAction.CREATE),
+  productController.importCSV
 );
 
 /**

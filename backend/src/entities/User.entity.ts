@@ -27,10 +27,10 @@ export class User {
   @Column()
   password!: string;
 
-  @Column()
+  @Column({ nullable: true, default: '' })
   firstName!: string;
 
-  @Column()
+  @Column({ nullable: true, default: '' })
   lastName!: string;
 
   @Column({
