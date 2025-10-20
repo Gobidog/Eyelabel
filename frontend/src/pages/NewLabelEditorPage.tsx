@@ -19,8 +19,10 @@ import { fetchActiveTemplates } from '@/store/templatesSlice';
 import { createLabel, updateLabel, fetchLabelById } from '@/store/labelsSlice';
 import { LabelType } from '@/types';
 import type { CreateLabelData } from '@/services/label.service';
+import { useNotifications } from '@/utils/notifications';
 
 export default function NewLabelEditorPage() {
+  const notifications = useNotifications();
   const { labelId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
@@ -55,7 +57,7 @@ export default function NewLabelEditorPage() {
 
   const handleSave = async () => {
     if (!selectedProduct || !selectedTemplate) {
-      alert('Please select a product and template');
+      notifications.warning('Please select a product and template');
       return;
     }
 

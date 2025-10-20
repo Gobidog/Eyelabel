@@ -28,6 +28,7 @@ import {
 import Papa from 'papaparse';
 import { fabric } from 'fabric';
 import jsPDF from 'jspdf';
+import { logger } from '@/utils/logger';
 
 interface CSVRow {
   [key: string]: string;
@@ -247,7 +248,7 @@ const BatchLabelGenerationPage: React.FC = () => {
       const data = await response.json();
       return data.dataUrl;
     } catch (error) {
-      console.error('Barcode generation error:', error);
+      logger.error('Barcode generation error:', error);
       throw error;
     }
   };

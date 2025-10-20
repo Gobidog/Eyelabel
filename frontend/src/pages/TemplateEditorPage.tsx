@@ -30,6 +30,8 @@ import {
 import { fabric } from 'fabric';
 import { TemplateType } from '@/types';
 import { templateService } from '@/services/template.service';
+import { useNotifications } from '@/utils/notifications';
+import { logger } from '@/utils/logger';
 
 interface CanvasElement {
   id: string;
@@ -39,6 +41,7 @@ interface CanvasElement {
 }
 
 const TemplateEditorPage: React.FC = () => {
+  const notifications = useNotifications();
   const { id } = useParams();
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -953,11 +956,11 @@ const TemplateEditorPage: React.FC = () => {
         templateData: templateData as any,
       });
 
-      alert('Template saved successfully!');
+      notifications.success('Template saved successfully!');
       navigate('/templates');
     } catch (error) {
-      console.error('Error saving template:', error);
-      alert('Failed to save template');
+      logger.error('Error saving template:', error);
+      notifications.error('Failed to save template');
     }
   };
 

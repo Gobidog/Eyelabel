@@ -18,8 +18,11 @@ import { fetchActiveTemplates } from '@/store/templatesSlice';
 import { createLabel, updateLabel, fetchLabelById } from '@/store/labelsSlice';
 import { LabelType } from '@/types';
 import type { CreateLabelData } from '@/services/label.service';
+import { useNotifications } from '@/utils/notifications';
+import { logger } from '@/utils/logger';
 
 export default function KonvaLabelEditor() {
+  const notifications = useNotifications();
   const { labelId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
@@ -61,7 +64,7 @@ export default function KonvaLabelEditor() {
     if (selectedProduct && baseTemplateElements.length > 0) {
       const product = products.find(p => p.id === selectedProduct);
       if (product) {
-        console.log('Populating template with product:', product.productName);
+        logger.debug('Populating template with product:', product.productName);
         setTemplateElements(populateProductData(baseTemplateElements, product));
       }
     }
@@ -90,8 +93,7 @@ export default function KonvaLabelEditor() {
     const template = templates.find((t) => t.id === templateId);
 
     if (template) {
-      console.log('Loading template:', template.name);
-      console.log('Template data:', template.templateData);
+      logger.debug('Loading template:', template.name, template.templateData);
 
       setCanvasWidth(template.templateData.width || 800);
       setCanvasHeight(template.templateData.height || 600);
@@ -115,7 +117,7 @@ export default function KonvaLabelEditor() {
 
   const handleSave = async () => {
     if (!selectedProduct || !selectedTemplate) {
-      alert('Please select a product and template');
+      notifications.warning('Please select a product and template');
       return;
     }
 

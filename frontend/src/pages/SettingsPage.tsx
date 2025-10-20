@@ -27,8 +27,10 @@ import {
   testAIConnection,
   clearStatus,
 } from '@/store/settingsSlice';
+import { useNotifications } from '@/utils/notifications';
 
 export default function SettingsPage() {
+  const notifications = useNotifications();
   const dispatch = useDispatch<AppDispatch>();
   const { keyStatus, testResult, isLoading, error, successMessage } = useSelector(
     (state: RootState) => state.settings
@@ -56,7 +58,7 @@ export default function SettingsPage() {
     }
 
     if (!apiKey.startsWith('sk-')) {
-      alert('Invalid OpenAI API key format. Keys should start with "sk-"');
+      notifications.warning('Invalid OpenAI API key format. Keys should start with "sk-"');
       return;
     }
 

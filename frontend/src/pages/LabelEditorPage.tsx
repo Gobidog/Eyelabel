@@ -38,8 +38,11 @@ import { fetchProducts } from '@/store/productsSlice';
 import { fetchActiveTemplates } from '@/store/templatesSlice';
 import { createLabel, updateLabel, fetchLabelById } from '@/store/labelsSlice';
 import { LabelType } from '@/types';
+import { useNotifications } from '@/utils/notifications';
+import { logger } from '@/utils/logger';
 
 export default function LabelEditorPage() {
+  const notifications = useNotifications();
   const { labelId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
@@ -178,7 +181,7 @@ export default function LabelEditorPage() {
     // Get selected product's barcode number
     const product = products.find((p) => p.id === selectedProduct);
     if (!product) {
-      alert('Please select a product first to generate barcode');
+      notifications.warning('Please select a product first to generate barcode');
       return;
     }
 
@@ -216,8 +219,8 @@ export default function LabelEditorPage() {
         fabricCanvasRef.current!.renderAll();
       });
     } catch (error) {
-      console.error('Barcode generation error:', error);
-      alert('Failed to generate barcode. Please try again.');
+      logger.error('Barcode generation error:', error);
+      notifications.warning('Failed to generate barcode. Please try again.');
     }
   };
 
@@ -236,13 +239,13 @@ export default function LabelEditorPage() {
     if (!fabricCanvasRef.current || !templateToLoad) return;
     const template = templates.find((t) => t.id === templateToLoad);
     if (!template) {
-      console.error('Template not found:', templateToLoad);
+      logger.error('Template not found:', templateToLoad);
       return;
     }
 
-    console.log('Loading template:', template.name);
-    console.log('Template data:', template.templateData);
-    console.log('Elements count:', template.templateData.elements?.length);
+    logger.debug('Loading template:', template.name);
+    logger.debug('Template data:', template.templateData);
+    logger.debug('Elements count:', template.templateData.elements?.length);
 
     // Clear canvas completely (including old grid lines)
     fabricCanvasRef.current.clear();
@@ -254,7 +257,7 @@ export default function LabelEditorPage() {
 
     // Load template elements by creating fabric objects directly
     if (template.templateData.elements && template.templateData.elements.length > 0) {
-      console.log('Loading elements:', template.templateData.elements.length);
+      logger.debug('Loading elements:', template.templateData.elements.length);
 
       template.templateData.elements.forEach((el: any) => {
         try {
@@ -324,18 +327,18 @@ export default function LabelEditorPage() {
             fabricCanvasRef.current!.add(obj);
           }
         } catch (error) {
-          console.error('Error creating object:', el.type, error);
+          logger.error('Error creating object:', el.type, error);
         }
       });
 
       fabricCanvasRef.current.renderAll();
-      console.log('Template loaded:', fabricCanvasRef.current.getObjects().length, 'objects');
+      logger.debug('Template loaded:', fabricCanvasRef.current.getObjects().length, 'objects');
     }
   };
 
   const handleSave = async () => {
     if (!fabricCanvasRef.current || !selectedProduct) {
-      alert('Please select a product before saving');
+      notifications.warning('Please select a product before saving');
       return;
     }
 
@@ -347,7 +350,7 @@ export default function LabelEditorPage() {
     if (!product) return;
 
     if (!selectedTemplate) {
-      alert('Please select a template before saving');
+      notifications.warning('Please select a template before saving');
       return;
     }
 
@@ -383,7 +386,7 @@ export default function LabelEditorPage() {
 
   const exportToPDF = async () => {
     if (!fabricCanvasRef.current || !selectedProduct) {
-      alert('Please select a product and add elements to the canvas before exporting');
+      notifications.warning('Please select a product and add elements to the canvas before exporting');
       return;
     }
 
@@ -421,14 +424,14 @@ export default function LabelEditorPage() {
 
       pdf.save(filename);
     } catch (error) {
-      console.error('PDF export error:', error);
-      alert('Failed to export PDF. Please try again.');
+      logger.error('PDF export error:', error);
+      notifications.warning('Failed to export PDF. Please try again.');
     }
   };
 
   const aiSuggestTemplate = async () => {
     if (!selectedProduct) {
-      alert('Please select a product first');
+      notifications.warning('Please select a product first');
       return;
     }
 
@@ -464,7 +467,7 @@ export default function LabelEditorPage() {
         );
       }
     } catch (error) {
-      console.error('AI template suggestion error:', error);
+      logger.error('AI template suggestion error:', error);
       setAiMessage('Failed to get AI template suggestion. Please try manually.');
     } finally {
       setAiLoading(false);
@@ -473,7 +476,7 @@ export default function LabelEditorPage() {
 
   const autoFillTemplate = async () => {
     if (!selectedProduct || !selectedTemplate) {
-      alert('Please select both product and template first');
+      notifications.warning('Please select both product and template first');
       return;
     }
 
@@ -574,14 +577,14 @@ export default function LabelEditorPage() {
             }
           }
         } catch (error) {
-          console.error('Barcode generation failed:', error);
+          logger.error('Barcode generation failed:', error);
         }
       }
 
       fabricCanvasRef.current.renderAll();
       setAiMessage(`✓ Template auto-filled with product data: ${product.productName} (${product.productCode})`);
     } catch (error) {
-      console.error('Auto-fill error:', error);
+      logger.error('Auto-fill error:', error);
       setAiMessage('Failed to auto-fill template. Please fill manually.');
     } finally {
       setAiLoading(false);
