@@ -92,10 +92,10 @@ This creates:
 
 **Test User Credentials:**
 ```
-ADMIN      | admin@eyelighting.com.au     | Admin123!
-ENGINEER   | engineer@eyelighting.com.au  | Engineer123!
-DESIGNER   | designer@eyelighting.com.au  | Designer123!
-APPROVER   | approver@eyelighting.com.au  | Approver123!
+ADMIN      | admin@eyelighting.com.au     | admin123
+ENGINEER   | engineer@eyelighting.com.au  | engineer123
+DESIGNER   | designer@eyelighting.com.au  | designer123
+APPROVER   | approver@eyelighting.com.au  | approver123
 ```
 
 **Note:** The seed script is idempotent - safe to run multiple times. Existing records are skipped.
